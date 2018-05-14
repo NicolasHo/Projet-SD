@@ -19,13 +19,23 @@ public class BlockchainImpl extends UnicastRemoteObject implements Blockchain
 	private List<Transaction> waitingTransactions = new ArrayList<Transaction>();
 	private Window viewer;
 
+	private String my_addr="";
+	private String my_port="";
+
 	public BlockchainImpl () throws RemoteException
 	{
 		super();
 		viewer= new Window();
 		blocks.add(new Block());
-		viewer.blockchain((ArrayList<Block>)blocks);
+		viewer.blockchain((ArrayList<Block>)blocks, 0);
 
+	}
+
+	public void setServerInfo(String addr, String port)
+	{
+		my_port=port;
+		my_addr=addr;
+		viewer.setTitle(addr, port);
 	}
 
 	private void newBlock() throws RemoteException
@@ -33,17 +43,16 @@ public class BlockchainImpl extends UnicastRemoteObject implements Blockchain
 		if(blocks.size()<2)
 		{
 			blocks.add(new Block());
+			if(blocks.size()==2)
+				blocks.get(0).resetHash();
 			currentTransaction=0;
-			viewer.blockchain((ArrayList<Block>)blocks);
+			viewer.blockchain((ArrayList<Block>)blocks, 0);
 		}
 		else if(blocks.get(blocks.size()-2).getHash() != "")
 		{
-			if(blocks.size()==2)
-				blocks.get(0).resetHash();
-
 			blocks.add(new Block());
 			currentTransaction=0;
-			System.out.println("Creation of a new Block");
+//			System.out.println("Creation of a new Block");
 
 			while(waitingTransactions.size()>0 && currentTransaction<maxTransactions)
 			{
@@ -83,22 +92,25 @@ public class BlockchainImpl extends UnicastRemoteObject implements Blockchain
 		}
 		else
 		{
-			Transaction newTransaction = new Transaction(from, to, amount, date, sign);
-			if(!newTransaction.verifiySignature())
+			Transaction newTr = new Transaction(from, to, amount, date, sign);
+			if(!newTr.verifiySignature())
 			{
 				System.out.println("Signature erronée");
 				return;
 			}
 			if(currentTransaction<maxTransactions)
 			{
-				blocks.get(blocks.size()-1).addTransaction(newTransaction);
+				blocks.get(blocks.size()-1).addTransaction(newTr);
 				currentTransaction++;
 				if(currentTransaction==maxTransactions)
 					newBlock();
-				viewer.blockchain((ArrayList<Block>)blocks);
+				viewer.blockchain((ArrayList<Block>)blocks, waitingTransactions.size());
 			}
 			else
-				waitingTransactions.add(newTransaction);	
+			{
+				waitingTransactions.add(newTr);	
+				viewer.blockchain((ArrayList<Block>)blocks, waitingTransactions.size());
+			}
 			broadcastTransaction(from, to, amount, date, sign);		
 		}
 	}
@@ -135,7 +147,7 @@ public class BlockchainImpl extends UnicastRemoteObject implements Blockchain
 				Timestamp timestamp = new Timestamp(System.currentTimeMillis());
 				addReward(sender, getHashZero(), "TODO", timestamp);
 				blocks.get(blocks.size()-1).setPreviousHash(blocks.get(blocks.size()-2).getHash());
-				viewer.blockchain((ArrayList<Block>)blocks);
+				viewer.blockchain((ArrayList<Block>)blocks, waitingTransactions.size());
 				if(currentTransaction==maxTransactions)
 					newBlock();
 			}
@@ -146,7 +158,7 @@ public class BlockchainImpl extends UnicastRemoteObject implements Blockchain
 			{
 				Timestamp timestamp = new Timestamp(System.currentTimeMillis());
 				addReward(sender, getHashZero(), "TODO", timestamp);
-				viewer.blockchain((ArrayList<Block>)blocks);
+				viewer.blockchain((ArrayList<Block>)blocks, waitingTransactions.size());
 				if(currentTransaction==maxTransactions)
 					newBlock();
 			}
@@ -170,7 +182,7 @@ public class BlockchainImpl extends UnicastRemoteObject implements Blockchain
 		else
 			blocks.get(0).addReward(newReward);
 		
-		System.out.println("add Rewards");
+//		System.out.println("add Rewards");
 
 		broadcastRewards(to, value, from, date);
 
@@ -197,7 +209,7 @@ public class BlockchainImpl extends UnicastRemoteObject implements Blockchain
 				return true;
 		}
 
-		System.out.println("Doesn't find Transaction");
+	//	System.out.println("Doesn't find Transaction");
 		return false;
 	}
 	
@@ -210,7 +222,7 @@ public class BlockchainImpl extends UnicastRemoteObject implements Blockchain
 				neighbor.getTransaction(from, to, amount,date,sign);
 			}
 			catch (RemoteException re) { System.out.println("...") ; }
-			System.out.println("broadcastTransaction");
+	//		System.out.println("broadcastTransaction");
 		}	
 	}
 
@@ -224,13 +236,13 @@ public class BlockchainImpl extends UnicastRemoteObject implements Blockchain
 		for(int i=1; i<=blocks.size() && !end ;i++)
 		{
 		//	System.out.println("\ti=" +i + " block:" + (blocks.size()-i));
-			if((blocks.get(blocks.size()-i)).getTime().before(date))
-				end=false;
 			if(blocks.get(blocks.size()-i).findReward(rew))
 			{
 		//		System.out.println("\t return TRUE");
 				return true;
 			}
+			if((blocks.get(blocks.size()-i)).getTime().before(date))
+				end=false;
 		}
 
 		//System.out.println("\t return FALSE");
@@ -246,22 +258,36 @@ public class BlockchainImpl extends UnicastRemoteObject implements Blockchain
 				neighbor.getRewards(to, value, from, date);
 			}
 			catch (RemoteException re) { System.out.println("...") ; }
-			System.out.println("broadcastRewards");
+	//		System.out.println("broadcastRewards");
 		}	
 	}
 
 	public boolean addNeighbor(Server neigh)
 	{
+		try
+		{
+			if((neigh.port()).equals(my_port) && (neigh.addr()).equals(my_addr))
+				return false;
+		}
+		catch (RemoteException re) { System.out.println(re); }
+
 		for (Server neighbor: neighbors)
 		{
 			try
 			{
-				if(neighbor.port()==neigh.port() && neighbor.addr()==neigh.addr())
+				if((neighbor.port()).equals(neigh.port()) && (neighbor.addr()).equals(neigh.addr()))
 					return false;
 			}
 			catch (RemoteException re) { System.out.println(re); }
 		}
 		neighbors.add(neigh);
+
+		try
+		{
+			neigh.newNeighbor(my_addr,my_port);
+		}
+		catch (RemoteException re) { System.out.println(re); }
+		
 		return true;
 	}
 

@@ -72,7 +72,7 @@ public class Client
 					}
 					if(invalid_hash)
 					{
-						System.out.println("proof " + proof);
+//						System.out.println("proof " + proof);
 						blockchain.setHash(publicKey, proof);
 					}
 
@@ -95,17 +95,21 @@ public class Client
 			System.exit(0) ;
 		}
 
-		Client cl= new Client(args);
+		Client cl= new Client(args[0], args[1]);
+		try
+		{
+			cl.client_actions();
+		}
+		catch (InterruptedException re) { System.out.println("...") ; }
 	}
 
-	public Client(String [] args)
+	public Client(String addr, String port)
 	{
 		keys=new Security();
 
 		try
 		{
-			change_block(args[0],args[1]);
-			client_actions();
+			change_block(addr,port);
 		}
 		catch (InterruptedException re) { System.out.println("...") ; }
 
@@ -132,7 +136,7 @@ public class Client
 		try
 		{
 			blockchain = (Blockchain) Naming.lookup("rmi://" + addr + ":" + port + "/blockchain") ;
-			System.out.println("Client pret") ;
+//			System.out.println("Client pret") ;
 
 			Mining digger = new Mining(blockchain, keys.getKey());
 			tDigger = new Thread(digger);
@@ -149,7 +153,92 @@ public class Client
 		return keys.generateSignature(data);
 	}
 
-	private void client_actions() throws InterruptedException 
+	public byte[] getKey()
+	{
+		return keys.getKey();
+	}
+
+	public void doTransaction(byte[] receiver, double amount)
+	{
+		Timestamp date = new Timestamp(System.currentTimeMillis());
+		byte[] sign = getSignature(receiver, amount, date);
+		try
+		{
+			blockchain.newTransaction(keys.getKey(), receiver, amount, date, sign); 
+		}
+		catch (RemoteException re) { System.out.println(re);}
+		catch (NumberFormatException e) {System.out.println("\tLe montant n'est pas un nombre");}
+	}
+
+	public void actions(int act, String[] args)
+	{
+		switch(act)
+		{
+			case 0: //my_key
+				System.out.println("\nPublic key  : " + keys.getKey());
+				break;
+
+			case 1: //my_points
+				double nb_transactions = 0;
+				try
+				{
+					nb_transactions=blockchain.getPoints(keys.getKey()); 
+				}
+				catch (RemoteException re) { System.out.println(re);}
+				System.out.println("\tMy points : " + nb_transactions);
+				break;
+
+			case 2: //transaction
+				if(args!=null && args.length == 3)
+				{
+					byte[] receiver = args[1].getBytes();
+					Timestamp date = new Timestamp(System.currentTimeMillis());
+					byte[] sign = getSignature(receiver, Double.parseDouble(args[2]), date);
+					try
+					{
+						blockchain.newTransaction(keys.getKey(), receiver, Double.parseDouble(args[2]), date, sign); 
+					}
+					catch (RemoteException re) { System.out.println(re);}
+					catch (NumberFormatException e) {System.out.println("\tLe montant n'est pas un nombre");}
+				}
+				else
+					System.out.println("\tUsage : transaction <receiver> <amount>");
+				break;
+
+			case 3: //mining
+			    if(args==null)
+			    {
+					System.out.println("\tUsage : mining <start/stop>");
+					break;
+				}
+				if(args[1].equals("start"))
+					tDigger.start();
+				else if(args[1].equals("stop"))
+					tDigger.interrupt();
+				else
+					System.out.println("\tUsage : mining <start/stop>");
+				break;
+
+			case 4: //change_block
+				try
+				{
+					if(args!=null && args.length == 3)
+					{
+						if(!change_block(args[1],args[2]))
+							System.out.println("Impossible d'acceder à la Blockchain");
+					}
+					else
+						System.out.println("\tUsage : change_block <machine du Serveur> <port du rmiregistry>");
+				}
+				catch (InterruptedException re) { System.out.println("...") ; }
+				break;
+
+			default:
+				System.out.println("Unknown message : " + act);
+		}
+	}
+
+	public void client_actions() throws InterruptedException 
 	{
 		help_println();
 
@@ -168,88 +257,46 @@ public class Client
 			args =cmd.split(delims);
 
 //--------------------------------------------EXIT---------------------------------------
-
 			if(args[0].equals("exit"))
 				return;
 
 //--------------------------------------------HELP---------------------------------------
-
 			else if(args[0].equals("help"))
 				help_println();
 
 //--------------------------------------------get ID---------------------------------------
-
 			else if(args[0].equals("my_key"))
 			{
-					System.out.println("\nPublic key  : " + keys.getKey());
+				actions(0,args);
 			}
 
 //--------------------------------------------get Points---------------------------------------
-
 			else if(args[0].equals("my_points"))
 			{
-				double nb_transactions = 0;
-				try
-				{
-					nb_transactions=blockchain.getPoints(keys.getKey()); 
-				}
-				catch (RemoteException re) { System.out.println(re);}
-				System.out.println("\tMy points : " + nb_transactions);
+				actions(1,args);
 			}
 
 //--------------------------------------------get ID---------------------------------------
-
 			else if(args[0].equals("transaction"))
 			{
-				if(args.length == 3)
-				{
-					byte[] receiver = args[1].getBytes();
-					Timestamp date = new Timestamp(System.currentTimeMillis());
-					byte[] sign = getSignature(receiver, Double.parseDouble(args[2]), date);
-					try
-					{
-						blockchain.newTransaction(keys.getKey(), receiver, Double.parseDouble(args[2]), date, sign); 
-					}
-					catch (RemoteException re) { System.out.println(re);}
-					catch (NumberFormatException e) {System.out.println("\tLe montant n'est pas un nombre");}
-				}
-
-				else
-					System.out.println("\tUsage : transaction <receiver> <amount>");
+				actions(2,args);
 			}
 
 //--------------------------------------------get ID---------------------------------------
-
 			else if(args[0].equals("mining"))
 			{
-				if(args[1].equals("start"))
-					tDigger.start();
-				else if(args[1].equals("stop"))
-					tDigger.interrupt();
-				else
-					System.out.println("\tUsage : mining <start/stop>");
+				actions(3,args);
 			}
-			
-//--------------------------------------------Unknown---------------------------------------
 
+//--------------------------------------------Unknown---------------------------------------
 			else if(args[0].equals("change_block"))
 			{
-				if(args.length == 3)
-				{
-					if(change_block(args[1],args[2]))
-						tDigger.start();
-					else 
-						System.out.println("Impossible d'acceder à la Blockchain");
-				}
-				else
-					System.out.println("\tUsage : change_block <machine du Serveur> <port du rmiregistry>");
+				actions(4,args);
 			}
 
 //--------------------------------------------Unknown---------------------------------------
-
 			else
 				System.out.println("Unknown message : " + cmd);
-
 		}
 	}
 

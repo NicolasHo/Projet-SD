@@ -24,7 +24,7 @@ public class ServerImpl extends UnicastRemoteObject implements Server
 		try
 		{
 			ServerImpl serv;
-			serv = new ServerImpl(args) ;
+			serv = new ServerImpl(Integer.parseInt(args[0])) ;
 			Naming.rebind("rmi://localhost:" + args[0] + "/server" ,serv) ;
 			System.out.println("Serveur pret") ;
 			serv.server_actions();
@@ -35,17 +35,18 @@ public class ServerImpl extends UnicastRemoteObject implements Server
 
 	}
 
-	public ServerImpl(String [] args) throws RemoteException
+	public ServerImpl(int port) throws RemoteException
 	{
 		super();
-		if(args.length > 0)
+		if(port > 0)
 		{
-			my_port=args[0];
+			my_port=Integer.toString(port);
 			try
 			{
 				blockchain = new BlockchainImpl () ;
-				Naming.rebind("rmi://localhost:" + args[0] + "/blockchain" ,blockchain) ;
+				Naming.rebind("rmi://localhost:" + Integer.toString(port) + "/blockchain" ,blockchain) ;
 				System.out.println("Serveur pret") ;
+				blockchain.setServerInfo(my_addr,my_port);
 			}
 			catch (RemoteException re) { System.out.println(re);}
 			catch (MalformedURLException e) { System.out.println(e);}
@@ -59,7 +60,6 @@ public class ServerImpl extends UnicastRemoteObject implements Server
 		try
 		{
 			new_neighbor = (Server) Naming.lookup("rmi://" + addr + ":" + port + "/server") ;
-			System.out.println("Client pret") ;
 		}
 		catch (NotBoundException re) { System.out.println(re) ; }
 		catch (RemoteException re) { System.out.println(re); }
@@ -120,16 +120,14 @@ public class ServerImpl extends UnicastRemoteObject implements Server
 
 	public void getTransaction(byte[] from, byte[] to, double amount,Timestamp date, byte[] sign) throws RemoteException
 	{
-
-		System.out.println("getTransaction");
+//		System.out.println("getTransaction");
 		if(!blockchain.findTransaction(from, to, amount, date, sign))
 			blockchain.newTransaction(from, to, amount, date, sign);
 	}
 
 	public void getRewards(byte[] to, int value, String from, Timestamp date)  throws RemoteException
 	{
-
-		System.out.println("getRewards");
+//		System.out.println("getRewards");
 		if(!blockchain.findRewards(to, value, from, date))
 			blockchain.addReward(to, value, from, date);
 	}

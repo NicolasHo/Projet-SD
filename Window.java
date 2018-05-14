@@ -20,24 +20,47 @@ public class Window extends JFrame
 {
 	public Window()
 	{
-		//ui();
-	}
-
-	public void blockchain(ArrayList<Block> blocks)
-	{
-		this.setTitle("Client Blockchain");
+		this.setTitle("Blockchain");
 		this.setSize(820, 550);
 		this.setLocationRelativeTo(null);
 		this.setResizable(false);
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+	}
+
+	public void setTitle(String addr, String port)
+	{
+		this.setTitle("Server: "+ addr +":"+port);
+	}
+
+	public void blockchain(ArrayList<Block> blocks, int wt)
+	{
 /*
 		menu_color= new Color(107, 107, 107);
 		txt_color= new Color(255, 255, 255);
 */
 
+		JPanel server = new JPanel();
+		server.setPreferredSize(new Dimension(800, 500));
+		server.setLayout(new BorderLayout());
+
+
+   		JPanel waiting = new JPanel();
+   		String str = "Wainting transaction" + ((wt>1)?"s":"") + ": " + Integer.toString(wt);
+    	JLabel text = new JLabel(str);
+  		text.setFont(new Font("Ariam",1,17));
+  		text.setForeground(Color.WHITE);
+		text.setPreferredSize(new Dimension(800, 50));
+		waiting.setBackground(new Color(107, 107, 107));
+		waiting.add(text);
+
+		server.add("North", waiting);
+
+
 		JPanel content = new JPanel();
 		content.setBackground(Color.WHITE);
-		content.setPreferredSize(new Dimension(800, 500));
+		content.setPreferredSize(new Dimension(800, 450));
+
+		server.add("Center", content);
 
 		GridBagConstraints gbc = new GridBagConstraints();
 		content.setLayout(new GridBagLayout());
@@ -50,7 +73,6 @@ public class Window extends JFrame
 			int i=0;
 			for (Block block : blocks) 
 			{
-				i++;
 				JPanel blockContent = new JPanel();        
 				blockContent.setBackground(new Color(107, 107, 107));
 				GridBagConstraints blockGBC = new GridBagConstraints();
@@ -75,96 +97,18 @@ public class Window extends JFrame
 				if(hash.equals(""))
 		        	blockContent.add(new JLabel(""),blockGBC);
 				else
-		        	blockContent.add(new JLabel(hash.substring(0, 5)+"..."+hash.substring(hash.length()-8, hash.length())),blockGBC);
+		        	blockContent.add(new JLabel(hash.substring(0, 13)),blockGBC	);
 				gbc.gridx = i%5;
 				gbc.gridy = i/5;
 				content.add(blockContent, gbc);
+				i++;
 			}
 		}
 
 
-		this.setContentPane(content);
+		this.setContentPane(server);
 		this.setVisible(true);
 	}
 
-
-	public void ui()
-	{  
-		this.setTitle("Client Blockchain");
-		this.setSize(820, 550);
-		this.setLocationRelativeTo(null);
-		this.setResizable(false);
-		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-		Color menu_color= new Color(107, 107, 107);
-		Color txt_color= new Color(255, 255, 255);
-
-		/**************************************
-		 *
-		 *		  GESTION DES BOUTONS
-		 *
-		***************************************/
-
-		JButton server_btn = new JButton("Connect to Server");
-		JButton tran_btn = new JButton("New Transaction");
-
-		server_btn.addActionListener(new ActionListener()
-		{
-			public void actionPerformed(ActionEvent event)
-			{
-				
-				System.out.println("<Connect></Connect>");
-			}
-		});
-
-		tran_btn.addActionListener(new ActionListener()
-		{
-			public void actionPerformed(ActionEvent event)
-			{
-				System.out.println("New Transaction");
-			}
-		});
-
-		JPanel cmd = new JPanel();
-		cmd.setBackground(menu_color);
-		cmd.setPreferredSize(new Dimension(250, 500));
-
-		/**************************************
-		 *
-		 *		  GESTION DE L'AFFICHAGE
-		 *
-		***************************************/
-
-
-		JPanel content = new JPanel();
-		content.setBackground(Color.WHITE);
-		content.setPreferredSize(new Dimension(800, 500));
-
-		GridBagConstraints gbc = new GridBagConstraints();
-		content.setLayout(new GridBagLayout());
-		cmd.setLayout(new GridBagLayout());
-
-		/*
-		gbc.gridx = 0;
-		gbc.gridy = 0;
-		gbc.gridheight = 1;
-		gbc.gridwidth = 1;
-		content.add(cmd, gbc);
-		gbc.gridx = 1;
-		content.add(log, gbc);
-
-		gbc.gridx = 0;
-		gbc.gridy = 0;
-		gbc.ipady = 10;
-		cmd.add(server_btn, gbc);
-		gbc.gridy = 1;
-		cmd.add( Box.createVerticalGlue(),gbc);
-		gbc.gridy = 2;
-		cmd.add(tran_btn, gbc);*/
-
-
-		this.setContentPane(content);
-		this.setVisible(true);
-	}  
 
 }

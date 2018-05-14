@@ -12,6 +12,9 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.HashMap;
 
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
 public class Block
 {  
 	private Timestamp timestamp;
@@ -26,6 +29,7 @@ public class Block
 	private String previous_hash;
 	private	String hash;
 
+	private final Lock mutex = new ReentrantLock(true);
 
 	public Block()
 	{
@@ -39,7 +43,7 @@ public class Block
 		previous_hash="";
 		hash="";
 
-		System.out.println("New Block ("+timestamp+")");
+//		System.out.println("New Block ("+timestamp+")");
 
 	}
 
@@ -61,12 +65,14 @@ public class Block
 	public void setPreviousHash(String str)
 	{
 		previous_hash=str;
-		System.out.println("\tPrevious hash set") ;
+//		System.out.println("\tPrevious hash set") ;
 	}
 
 	public void addReward(Reward newReward) 
 	{
+		mutex.lock();
 		rewards.add(newReward);
+		mutex.unlock();
 	}
 
 	public boolean findReward(String rew)
@@ -81,8 +87,10 @@ public class Block
 
 	public void addTransaction(Transaction newTransaction)
 	{
+		mutex.lock();
 		transactions.add(newTransaction);
 		System.out.println("\tTransaction saved") ;
+		mutex.unlock();
 	}
 
 	public double getPoints(byte[] publicKey)
@@ -103,7 +111,6 @@ public class Block
 				nbPoints+=reward.getPoints();
 		}
 
-
 		return nbPoints;
 	}
 
@@ -119,6 +126,8 @@ public class Block
 
 	public String getBlock()
 	{
+
+		mutex.lock();
 		String toHash="";
 		toHash+=new SimpleDateFormat("yyyy.MM.dd.HH.mm.ss").format(timestamp);
 
@@ -126,6 +135,7 @@ public class Block
 			toHash+=transaction.toString();
 		for(Reward reward : rewards)
 			toHash+=reward.toString();
+		mutex.unlock();
 
 		return toHash;
 	}
@@ -179,7 +189,6 @@ public class Block
 
 		int newNbZero=0;
 		int i=0;
-
 		try
 		{
 			MessageDigest md = MessageDigest.getInstance("SHA-512");
@@ -204,7 +213,7 @@ public class Block
 				nbZero=newNbZero;
 				proof=newProof;
 				hash=newHash;
-				System.out.println("\tNew proof: " + newProof +"\n\tNumber of Zero: " + nbZero);
+//				System.out.println("\tNew proof: " + newProof +"\n\tNumber of Zero: " + nbZero);
 			}
 		}
 		catch (NoSuchAlgorithmException e){e.printStackTrace();}
